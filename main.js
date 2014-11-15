@@ -11,6 +11,7 @@ var lastReceived = 0;
 var lastSent = 0;
 var dataRates = [];
 var COUNT_THRESHOLD = 30;
+var thresholdMultiplier = 1;
 
 if (process.argv[2] == "--add") {
     service.add ("devFluid Reporter", {programArgs: ["--run"]});
@@ -27,14 +28,7 @@ if (process.argv[2] == "--add") {
 	setInterval(function() {
 	child = exec('netstat -e',function(error, stdout, stderr) {
 			var numbers = stdout.match(/\d+/g);
-			// first is received bytes, second is sent bytes
-			if (initialSample) { 
-				lastReceived = numbers[0];
-				lastSent = numbers[1];
-				initialSample = false;
-				return;
-			}
-			if (numbers[0] >= 0 && numbers[1] >= 0) {
+			if (numbers[0] >= lastReceived && numbers[1] >= lastSent && !initialSample) {
 				dataRates.push({
 					localTimestamp: Date.now(),
 					received: numbers[0] - lastReceived,
@@ -44,8 +38,14 @@ if (process.argv[2] == "--add") {
 				lastReceived = numbers[0];
 				lastSent = numbers[1];
 			}
+			else {
+				// adapter was probably reset?
+				lastReceived = numbers[0];
+				lastSent = numbers[1];
+				initialSample = false;
+			}
 			
-			if (dataRates.length >= COUNT_THRESHOLD) {
+			if (dataRates.length >= COUNT_THRESHOLD * thresholdMultiplier) {
 				sendData();
 			}
 		});
@@ -62,9 +62,18 @@ function sendData() {
 		access_token: config.access_token
 	};
 	rest.post(config.api_endpoint,
-		{ data: postData }).on('complete', 
+		{ data: postData })
+	.on('complete', 
 		function(data, response) {
 			console.log(data);
+			thresholdMultiplier=1;
+		}
+	)
+	.on('error'),
+		function(err, response) {
+			console.log(err);
+			thresholdMultiplier++;
+			dataRates = tmpData.concat(dataRates);
 		}
 	);
 }
