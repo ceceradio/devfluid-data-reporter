@@ -1,0 +1,11 @@
+/*
+Modify this file before starting/adding the service. 
+Rename to config.js
+*/
+var config = {}
+
+config.api_endpoint = "http://YOUR_API_ENDPOINT";
+config.access_token = "some sort of access token to keep you safe :^)";
+config.deviceName = "My Computer";
+
+module.exports = config;
