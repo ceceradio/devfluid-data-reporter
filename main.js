@@ -69,7 +69,7 @@ function sendData() {
 			thresholdMultiplier=1;
 		}
 	)
-	.on('error'),
+	.on('error',
 		function(err, response) {
 			console.log(err);
 			thresholdMultiplier++;
