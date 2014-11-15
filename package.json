@@ -1,0 +1,20 @@
+{
+  "name": "devfluid-data-reporter",
+  "version": "0.0.2",
+  "description": "A data usage monitoring and reporting service for Windows operating systems.",
+  "contributors": [
+    {
+      "name": "Charlie Wagner",
+      "email": "charles.wagner@devfluid.com"
+    }
+  ],
+  "homepage": "https://github.com/satsukitv/devfluid-data-reporter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/satsukitv/devfluid-data-reporter.git"
+  },
+  "dependencies": {
+    "restler": "*",
+    "windows-service": "*"
+  }
+}
