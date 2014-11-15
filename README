@@ -1,0 +1,9 @@
+devfluid-data-reporter is a Window Service that runs on nodejs
+
+The service will collect information about your network connection (bytes sent/received) and transmit it at regular intervals to a remote server.
+
+Installation:
+* Edit config.js.dist and rename to config.js
+* Run node main.js --add 
+* Open services.msc and start devfluid Reporter
+* Check main.js.log after about 30 seconds to ensure that the service is running.
