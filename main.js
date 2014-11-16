@@ -56,6 +56,9 @@ if (process.argv[2] == "--add") {
 				lastReceived = numbers[0];
 				lastSent = numbers[1];
 			}
+			else if (numbers[0] == 0 || numbers[1] == 0) {
+				// network is off, don't do anything
+			}
 			else {
 				lastReceived = numbers[0];
 				lastSent = numbers[1];
