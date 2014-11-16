@@ -7,5 +7,6 @@ var config = {}
 config.api_endpoint = "http://YOUR_API_ENDPOINT";
 config.access_token = "some sort of access token to keep you safe :^)";
 config.deviceName = "My Computer";
+config.adapterName = "Network Controller";
 
 module.exports = config;

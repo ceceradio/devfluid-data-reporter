@@ -28,20 +28,23 @@ if (process.argv[2] == "--add") {
 
     // Run service program code...
 	setInterval(function() {
-	child = exec('netstat -e',function(error, stdout, stderr) {
-			var numbers = stdout.match(/\d+/g);
+	child = exec('wmic path Win32_PerfRawData_Tcpip_NetworkInterface get BytesReceivedPersec,BytesSentPersec,BytesTotalPersec,Name',function(error, stdout, stderr) {
+			var numbers = null;
+			var arrayOfLines = stdout.match(/[^\r\n]+/g);
 			
-			//console.log("\r\nData:\r\nRx: "+numbers[0]+" Bytes\t\tTx: "+numbers[1]+" Bytes");
-			
-			// check to see if we are 'waking' from standby. numbers will go 'back up'
-			// we should resample at this point
-			if (standby_lastRx > 0 && standby_lastTx > 0 && numbers[0] > standby_lastRx && numbers[1] > standby_lastTx) {
-				standby_lastRx = 0;
-				standby_lastTx = 0;
-				initialSample = true;
+			for(var i = 0; i < arrayOfLines.length; i++) {	
+				if (arrayOfLines[i].indexOf(config.adapterName) > -1) {
+					numbers = arrayOfLines[i].match(/\d+/g);
+					break;
+				}
 			}
+			if (numbers == null) {
+				console.log('Could not find line');
+				return; 
+			}
+			console.log("\r\nData:\r\nRx: "+numbers[0]+" Bytes\t\tTx: "+numbers[1]+" Bytes");
 			
-			// if our byte counter is greater than last time & we don't need to resample
+			// if our byte counter is greater than last time
 			// then we can send data
 			if (numbers[0] >= lastReceived && numbers[1] >= lastSent && !initialSample) {
 				dataRates.push({
@@ -53,13 +56,7 @@ if (process.argv[2] == "--add") {
 				lastReceived = numbers[0];
 				lastSent = numbers[1];
 			}
-			// if our byte counter is less,  we are probably in standby
 			else {
-				// if we are just resampling, don't log the previous numbers as our standby state
-				if (!initialSample) {
-					standby_lastRx = lastReceived;
-					standby_lastTx = lastSent;
-				}
 				lastReceived = numbers[0];
 				lastSent = numbers[1];
 				initialSample = false;
