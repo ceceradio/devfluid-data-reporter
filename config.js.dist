@@ -4,9 +4,15 @@ Rename to config.js
 */
 var config = {}
 
+config.saveMode = "sqlite"; // use a string or an array of strings e.g. ["sqlite","api"]
+
+config.dbFile = "data.db";
+config.dbServerPort = 38028;
+
 config.api_endpoint = "http://YOUR_API_ENDPOINT";
 config.access_token = "some sort of access token to keep you safe :^)";
 config.deviceName = "My Computer";
 config.adapterName = "Network Controller";
 
-module.exports = config;
+if (typeof module !== "undefined")
+	module.exports = config;

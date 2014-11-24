@@ -1,6 +1,6 @@
 {
   "name": "devfluid-data-reporter",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A data usage monitoring and reporting service for Windows operating systems.",
   "contributors": [
     {
@@ -14,7 +14,10 @@
     "url": "https://github.com/satsukitv/devfluid-data-reporter.git"
   },
   "dependencies": {
+    "Datalier": "git+https://github.com/satsukitv/datalier-node.git",
+    "express": "^4.10.2",
     "restler": "*",
+    "sqlite3": "^3.0.4",
     "windows-service": "*"
   }
 }

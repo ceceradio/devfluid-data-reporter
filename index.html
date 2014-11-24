@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>devFluid Data Reporter</title>
+
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+	<script src="js/jquery.sparkline.min.js" charset="utf-8"></script>
+	<script src="js/moment.js"></script>
+	<script src="node_modules/Datalier/datalier.js"></script>
+	<script src="node_modules/Datalier/datalier.sparkline.js"></script>
+	<script src="config.js"></script>
+	<style>
+	
+	</style>
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+</head>
+<body role="document"><!-- Fixed navbar -->
+    <div id="data" style="text-align:center;">
+		<div style="margin-left:auto;margin-right:auto;margin-top:100px;display:inline-block;height:400px;font-size:40px;" id="dataUsage-container">
+			<span id="dataUsage"></span><p style="text-align:left">Data Usage in Kilobytes per Minute</p>
+		</div>
+	</div>
+
+<script>
+$(document).ready(function() {
+	getDataUsageData(function(response) {
+		plotDataUsage(response);
+	});
+	
+});
+function plotDataUsage(response) {
+	if (typeof response.error != "undefined") {
+		$("#dataUsage").text("There was an error while retrieving the data: "+response.error_description);
+		return;
+	}
+	//console.log(response);return;
+	response.reverse();
+	db = OQL.db(response);
+		
+	db.operate('localTimestamp','-',moment().zone()*60*1000);
+
+	//var Plot = CreateDatalierPlot();
+	
+	
+	var roundedUpHour = (Math.floor(response[0].localTimestamp / 3600) + 1) * 3600;
+	//var data = db.select("localTimestamp",">",roundedUpHour).values();
+	
+	db.operate('sent','/',1024);
+	db.operate('received','/',1024);
+	
+	var data = db.values();
+	var startTime = data[0].localTimestamp;
+	var finalTime = data[data.length-1].localTimestamp;
+
+	var Plot = new datalier.sparkline(
+		[
+			{
+				type: 'collapseField',
+				field: 'received',
+				label: 'Received Kilobytes',
+				padZeroes: false,
+				showZeroes: true,
+				relative: true,
+				alignWithStart: true,
+				startTime: startTime,
+				finalTime: finalTime,
+				lineWidth: 3,
+				granularity: 1000 * 60,
+				color: "#3ABCC9",
+				yaxis: 0
+			},
+			{
+				type: 'collapseField',
+				field: 'sent',
+				label: 'Sent Kilobytes',
+				padZeroes: false,
+				showZeroes: true,
+				relative: true,
+				alignWithStart: true,
+				startTime: startTime,
+				finalTime: finalTime,
+				color: "#D8C745",
+				granularity: 1000 * 60,
+				lineWidth: 3,
+				yaxis:0
+			}
+		],
+		data,
+		{ type: 'bar', stackedBarColor: ['#D8C745','#44D644'], container: '#dataUsage', barWidth:8 },
+		"localTimestamp"
+	);
+	Plot.draw();
+}
+function getDataUsageData(callback) {
+	$.getJSON("http://localhost:"+config.dbServerPort,{},function(response) {
+		callback(response);
+	});
+}
+</script>
+</html>

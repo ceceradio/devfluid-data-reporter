@@ -3,3 +3,4 @@ config.js
 node_modules
 node_modules/*
 *.log
+*.db

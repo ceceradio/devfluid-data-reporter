@@ -1,9 +1,14 @@
+var config = require('./config.js');
 var exec = require('child_process').exec,
     child;
 var rest = require('restler');
 var service = require ("windows-service");
 var fs = require('fs');
-var config = require('./config.js');
+var sqlite3;
+var db;
+var express;
+var app;
+
 
 var INTERVAL_LENGTH = 5000;
 var initialSample = true;
@@ -13,7 +18,9 @@ var standby_lastRx = 0;
 var standby_lastTx = 0;
 var dataRates = [];
 var COUNT_THRESHOLD = 30;
-var thresholdMultiplier = 1;
+var DAYS_TO_STORE = 2
+var MS_PER_DAY =  1000 * 60 * 60 * 24;
+//var thresholdMultiplier = 1;
 
 if (process.argv[2] == "--add") {
     service.add ("devFluid Reporter", {programArgs: ["--run"]});
@@ -25,7 +32,53 @@ if (process.argv[2] == "--add") {
     service.run (logStream, function () {
         service.stop (0);
     });
+	sqlite3 = require("sqlite3");
+	
+	db = new sqlite3.Database(config.dbFile);
+	db.serialize(function() {
+		db.run(
+			"CREATE TABLE IF NOT EXISTS data_events ("+
+			"id INTEGER PRIMARY KEY, "+
+			"device TEXT, "+
+			"localTimestamp INTEGER, "+
+			"received INTEGER, "+
+			"sent INTEGER ) "
+		);
+	});
+	
+	if (isSqliteEnabled()) {
+		var express = require('express')
+		var app = express()
+		// Add headers
+		app.use(function (req, res, next) {
+			// Website you wish to allow to connect
+			res.setHeader('Access-Control-Allow-Origin', '*');
 
+			// Request methods you wish to allow
+			res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+
+			// Request headers you wish to allow
+			res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+
+			// Pass to next layer of middleware
+			next();
+		});
+		app.get('/', function (req, res) {
+			
+			db.serialize(function() {  
+				db.all("SELECT * FROM data_events ORDER BY localTimestamp DESC LIMIT 1000", function(err, rows) {
+					if (err) {
+						res.send(err, 500);
+						return;
+					}
+					res.json(rows);
+				});
+			});
+		})
+
+		app.listen(config.dbServerPort, 'localhost')
+	}
+	
     // Run service program code...
 	setInterval(function() {
 	child = exec('wmic path Win32_PerfRawData_Tcpip_NetworkInterface get BytesReceivedPersec,BytesSentPersec,BytesTotalPersec,Name',function(error, stdout, stderr) {
@@ -65,7 +118,7 @@ if (process.argv[2] == "--add") {
 				initialSample = false;
 			}
 			
-			if (dataRates.length >= COUNT_THRESHOLD * thresholdMultiplier) {
+			if (dataRates.length >= COUNT_THRESHOLD) {
 				sendData();
 			}
 		});
@@ -73,9 +126,55 @@ if (process.argv[2] == "--add") {
 } else {
     // Show usage...
 }
+function isSqliteEnabled() {
+	if (typeof config.saveMode == "string" && config.saveMode == "sqlite") {
+		return true;
+	}
+	else if (config.saveMode instanceof Array) {
+		if (config.saveMode.indexOf("sqlite")>-1)
+			return true;
+	}
+	return false;
+}
 function sendData() {
 	var tmpData = dataRates;
 	dataRates = [];
+	if (typeof config.saveMode == "string") {
+		switch(config.saveMode) {
+			case "api":
+				sendData_api(tmpData);
+				break;
+			case "sqlite":
+				sendData_sqlite(tmpData);
+				break;
+		}
+	}
+	else if (config.saveMode instanceof Array) {
+		if (config.saveMode.indexOf("api")>-1)
+			sendData_api(tmpData);
+		if (config.saveMode.indexOf("sqlite")>-1)
+			sendData_sqlite(tmpData);
+	}
+}
+function sendData_sqlite(data) {
+	db.serialize(function() {  
+		var stmt = db.prepare("INSERT INTO data_events (device, localTimestamp, received, sent) VALUES (?,?,?,?)");
+		var insertObj = [0,1,2,3];
+		for (var i = 0; i < data.length; i++) {
+			insertObj[0]=config.deviceName;
+			insertObj[1]=data[i].localTimestamp;
+			insertObj[2]=data[i].received;
+			insertObj[3]=data[i].sent;
+			stmt.run(insertObj);
+		}
+		stmt.finalize();
+		var cullingTime = Date.now() - MS_PER_DAY * DAYS_TO_STORE;
+		db.run("DELETE FROM data_events WHERE localTimestamp < " + cullingTime);
+	});
+}
+var apiResendableData = [];
+function sendData_api(tmpData) {
+	tmpData = apiResendableData.concat(tmpData);
 	var postData = {
 		device: config.deviceName,
 		dataRates: JSON.stringify(tmpData),
@@ -91,13 +190,12 @@ function sendData() {
 	)
 	.on('error',
 		function(err, response) {
-			thresholdMultiplier++;
-			dataRates = tmpData.concat(dataRates);
+			apiResendableData = tmpData;
 		}
 	)
 	.on('success',
 		function(data,response) {
-			thresholdMultiplier=1;
+			apiResendableData = [];
 		}
 	);
 }
