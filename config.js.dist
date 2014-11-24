@@ -14,5 +14,7 @@ config.access_token = "some sort of access token to keep you safe :^)";
 config.deviceName = "My Computer";
 config.adapterName = "Network Controller";
 
+config.localPlotType = "sparkline"; // possible values: sparkline, plot
+
 if (typeof module !== "undefined")
 	module.exports = config;

@@ -6,16 +6,20 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>devFluid Data Reporter</title>
-
+	
+	<link rel="stylesheet" type="text/css" href="css/local.css">
+	
 	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 	<script src="js/jquery.sparkline.min.js" charset="utf-8"></script>
+	<script src="js/jquery.flot.min.js" charset="utf-8"></script>
+	<script src="js/jquery.flot.time.min.js" charset="utf-8"></script>
+	<script src="js/jquery.flot.axislabels.js" charset="utf-8"></script>
 	<script src="js/moment.js"></script>
 	<script src="node_modules/Datalier/datalier.js"></script>
 	<script src="node_modules/Datalier/datalier.sparkline.js"></script>
+	<script src="node_modules/Datalier/datalier.plot.js"></script>
 	<script src="config.js"></script>
-	<style>
-	
-	</style>
+
 
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -26,7 +30,7 @@
 </head>
 <body role="document"><!-- Fixed navbar -->
     <div id="data" style="text-align:center;">
-		<div style="margin-left:auto;margin-right:auto;margin-top:100px;display:inline-block;height:400px;font-size:40px;" id="dataUsage-container">
+		<div style="margin-left:auto;margin-right:auto;margin-top:100px;display:inline-block;font-size:40px;" id="dataUsage-container">
 			<span id="dataUsage"></span><p style="text-align:left">Data Usage in Kilobytes per Minute</p>
 		</div>
 	</div>
@@ -61,8 +65,28 @@ function plotDataUsage(response) {
 	var data = db.values();
 	var startTime = data[0].localTimestamp;
 	var finalTime = data[data.length-1].localTimestamp;
-
-	var Plot = new datalier.sparkline(
+	
+	var options = {
+		"sparkline": { type: 'bar', stackedBarColor: ['#D8C745','#44D644'], container: '#dataUsage', barWidth:4 },
+		"plot": {
+			timeFormat: 'Do h:ma',
+			container:"#dataUsage",
+			granularity: 1000 * 60 * 60,
+			xaxes: [{
+				mode: "time",
+				timeformat: '%m/%d %l:%M%p'
+			}]
+		}
+	}
+	
+	var objects = {
+		"sparkline": datalier.sparkline,
+		"plot": datalier.plot
+	}
+	
+	$("#dataUsage").addClass(config.localPlotType);
+	
+	var Plot = new objects[config.localPlotType](
 		[
 			{
 				type: 'collapseField',
@@ -96,7 +120,7 @@ function plotDataUsage(response) {
 			}
 		],
 		data,
-		{ type: 'bar', stackedBarColor: ['#D8C745','#44D644'], container: '#dataUsage', barWidth:8 },
+		options[config.localPlotType],
 		"localTimestamp"
 	);
 	Plot.draw();
